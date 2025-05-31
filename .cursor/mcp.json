@@ -1,10 +1,9 @@
 {
     "mcpServers": {
         "smart-city": {
-            "command": "node",
+            "command": "npx",
             "args": [
-                "--loader",
-                "ts-node/esm",
+                "ts-node",
                 "src/server.ts"
             ],
             "env": {

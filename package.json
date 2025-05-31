@@ -8,6 +8,9 @@
     "typescript": "^5.8.3",
     "zod": "^3.25.42"
   },
+  "scripts": {
+    "start": "npx ts-node src/server.ts"
+  },
   "devDependencies": {
     "@types/pdf-parse": "^1.1.5"
   }
