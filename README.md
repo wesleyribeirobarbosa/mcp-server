@@ -160,8 +160,7 @@ O banco de dados possui índices otimizados para consultas frequentes:
 
 ### Configuração do Cursor
 
-1. Instale a extensão do Cursor no seu editor
-2. Configure o arquivo `.cursor/mcp.json` com as seguintes configurações:
+1. Configure o arquivo `.cursor/mcp.json` com as seguintes configuraçõe:
 
 ```json
 {
@@ -169,9 +168,7 @@ O banco de dados possui índices otimizados para consultas frequentes:
         "smart-city": {
             "command": "node",
             "args": [
-                "--loader",
-                "ts-node/esm",
-                "src/server.ts"
+                "/CAMINHO/ABSOLUTO/PARA/dist/server.js"
             ],
             "env": {
                 "MONGO_URI": "mongodb://mongo_user:mongo-password@localhost:27017/smart_city_iot?authSource=admin",
@@ -181,6 +178,10 @@ O banco de dados possui índices otimizados para consultas frequentes:
     }
 }
 ```
+
+> **Importante:**
+> - O caminho para o arquivo `server.js` deve ser absoluto (exemplo: `/home/usuario/projeto/dist/server.js`).
+> - Se estiver usando TypeScript, execute `npm run build` antes e utilize o arquivo gerado em `dist/server.js` (ou conforme sua configuração de saída do build).
 
 ### Exemplos de Uso com Cursor
 

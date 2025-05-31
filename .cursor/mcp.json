@@ -1,10 +1,9 @@
 {
     "mcpServers": {
         "smart-city": {
-            "command": "npx",
+            "command": "node",
             "args": [
-                "ts-node",
-                "src/server.ts"
+                "/home/wesley/Nouvenn/mcp-server/dist/server.js"
             ],
             "env": {
                 "MONGO_URI": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/smart_city_iot?authSource=admin",

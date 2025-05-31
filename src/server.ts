@@ -4,7 +4,9 @@ import { MongoClient, Db } from 'mongodb';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import pdfParse from 'pdf-parse';
-import { z } from 'zod';
+import { z } from 'zod/v4';
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 // Configuração
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/admin';
@@ -12,7 +14,25 @@ const PDF_DIR = path.join(__dirname, '../docs');
 const client = new MongoClient(MONGO_URI);
 let db: Db;
 
-console.log('Iniciando servidor MCP...');
+// Configuração do logger com rotação por tamanho (1000 linhas ~ 100KB)
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}]: ${message}`)
+    ),
+    transports: [
+        new DailyRotateFile({
+            filename: 'logs/server.log',
+            maxSize: '100k', // Aproximadamente 1000 linhas
+            maxFiles: '10',
+            zippedArchive: true
+        })
+    ]
+});
+
+// Log explícito para testar criação do arquivo
+logger.info('Teste de criação de log: Winston está funcionando!');
 
 // Inicializa o servidor MCP
 const server = new McpServer({
@@ -20,16 +40,16 @@ const server = new McpServer({
     version: '1.0.0'
 });
 
-console.log('Servidor MCP criado');
+logger.info('Servidor MCP criado');
 
 // Conexão ao MongoDB
 async function connectToMongo() {
     try {
         await client.connect();
         db = client.db('smart_city_iot');
-        console.log('Conectado ao MongoDB');
+        logger.info('Conectado ao MongoDB');
     } catch (error) {
-        console.error('Erro ao conectar ao MongoDB:', error);
+        logger.error('Erro ao conectar ao MongoDB:', error);
         process.exit(1);
     }
 }
@@ -39,7 +59,7 @@ server.resource(
     'listOfferings',
     'mcp://listOfferings',
     async () => {
-        console.log('ListOfferings chamado');
+        logger.info('ListOfferings chamado');
         return {
             contents: [{
                 uri: 'mcp://listOfferings',
@@ -221,7 +241,7 @@ server.tool(
     'analyzeGasConsumption',
     {
         title: 'Analisar Consumo de Gás',
-        region: z.string(),
+        region: z.string().optional(),
         startTime: z.number(),
         endTime: z.number()
     },
@@ -267,39 +287,39 @@ server.tool(
 // Inicia o servidor
 async function startServer() {
     try {
-        console.log('Conectando ao MongoDB...');
+        logger.info('Conectando ao MongoDB...');
         await connectToMongo();
-        console.log('Criando transporte...');
+        logger.info('Criando transporte...');
         const transport = new StdioServerTransport();
-        console.log('Conectando servidor ao transporte...');
+        logger.info('Conectando servidor ao transporte...');
         await server.connect(transport);
-        console.log('Servidor MCP rodando...');
+        logger.info('Servidor MCP rodando...');
 
         // Mantém o processo rodando
         process.stdin.resume();
 
         // Adiciona handlers para debug
         process.on('SIGINT', () => {
-            console.log('Recebido SIGINT');
+            logger.info('Recebido SIGINT');
             process.exit(0);
         });
 
         process.on('SIGTERM', () => {
-            console.log('Recebido SIGTERM');
+            logger.info('Recebido SIGTERM');
             process.exit(0);
         });
 
         process.on('uncaughtException', (error) => {
-            console.error('Erro não capturado:', error);
+            logger.error('Erro não capturado:', error);
             process.exit(1);
         });
     } catch (error) {
-        console.error('Erro ao iniciar o servidor:', error);
+        logger.error('Erro ao iniciar o servidor:', error);
         process.exit(1);
     }
 }
 
 startServer().catch(error => {
-    console.error('Erro ao iniciar o servidor:', error);
+    logger.error('Erro ao iniciar o servidor:', error);
     process.exit(1);
 });
