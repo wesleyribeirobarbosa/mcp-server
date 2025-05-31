@@ -165,10 +165,20 @@ O banco de dados possui índices otimizados para consultas frequentes:
 
 ```json
 {
-  "mcp": {
-    "server": "http://localhost:3000",
-    "apiKey": "sua-api-key-aqui"
-  }
+    "mcpServers": {
+        "smart-city": {
+            "command": "node",
+            "args": [
+                "--loader",
+                "ts-node/esm",
+                "src/server.ts"
+            ],
+            "env": {
+                "MONGO_URI": "mongodb://mongo_user:mongo-password@localhost:27017/smart_city_iot?authSource=admin",
+                "READ_ONLY": "false"
+            }
+        }
+    }
 }
 ```
 
