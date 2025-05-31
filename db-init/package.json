@@ -1,0 +1,14 @@
+{
+    "name": "mongodb-populator",
+    "version": "1.0.0",
+    "description": "Script para popular MongoDB com dados de IoT",
+    "main": "populate_mongodb.js",
+    "scripts": {
+        "start": "node populate_mongodb.js"
+    },
+    "dependencies": {
+        "mongodb": "^6.3.0",
+        "dotenv": "^16.3.1",
+        "progress": "^2.0.3"
+    }
+}
