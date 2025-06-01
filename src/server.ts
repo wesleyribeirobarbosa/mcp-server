@@ -4,7 +4,7 @@ import { MongoClient, Db } from 'mongodb';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import pdfParse from 'pdf-parse';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 
@@ -139,7 +139,6 @@ server.resource(
 server.tool(
     'listLightingDevices',
     {
-        title: 'Listar Dispositivos de Iluminação',
         region: z.string().optional(),
         status: z.string().optional()
     },
@@ -159,7 +158,6 @@ server.tool(
 server.tool(
     'getLightingTelemetry',
     {
-        title: 'Consultar Telemetria de Iluminação',
         deviceId: z.string(),
         startTime: z.number(),
         endTime: z.number()
@@ -183,7 +181,6 @@ server.tool(
 server.tool(
     'analyzeEnergyConsumption',
     {
-        title: 'Analisar Consumo de Energia',
         deviceId: z.string(),
         startTime: z.number(),
         endTime: z.number()
@@ -218,7 +215,6 @@ server.tool(
 server.tool(
     'detectWaterLeaks',
     {
-        title: 'Detectar Vazamentos de Água',
         startTime: z.number(),
         endTime: z.number()
     },
@@ -240,7 +236,6 @@ server.tool(
 server.tool(
     'analyzeGasConsumption',
     {
-        title: 'Analisar Consumo de Gás',
         region: z.string().optional(),
         startTime: z.number(),
         endTime: z.number()
