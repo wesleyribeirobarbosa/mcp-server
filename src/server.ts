@@ -3,7 +3,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { MongoClient, Db } from 'mongodb';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import pdfParse from 'pdf-parse';
 import { z } from 'zod';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
@@ -31,8 +30,7 @@ const logger = winston.createLogger({
     ]
 });
 
-// Log explícito para testar criação do arquivo
-logger.info('Teste de criação de log: Winston está funcionando!');
+logger.info('Arquivo de Logs Criados com Sucesso!');
 
 // Inicializa o servidor MCP
 const server = new McpServer({
@@ -140,17 +138,83 @@ server.tool(
     'listLightingDevices',
     {
         region: z.string().optional(),
-        status: z.string().optional()
+        status: z.string().optional(),
+        geoJson: z.boolean().optional()
     },
-    async ({ region, status }) => {
+    async ({ region, status, geoJson }) => {
+        // Polígonos aproximados das regiões do Brasil
+        const REGIONS: { [key: string]: number[][] } = {
+            'norte': [
+                [-73.99, -0.5], [-50.0, -0.5], [-50.0, 5.5], [-73.99, 5.5], [-73.99, -0.5]
+            ],
+            'nordeste': [
+                [-50.0, -10.0], [-34.8, -10.0], [-34.8, 5.5], [-50.0, 5.5], [-50.0, -10.0]
+            ],
+            'centro-oeste': [
+                [-60.0, -20.0], [-50.0, -20.0], [-50.0, -10.0], [-60.0, -10.0], [-60.0, -20.0]
+            ],
+            'sudeste': [
+                [-50.0, -24.0], [-40.0, -24.0], [-40.0, -20.0], [-50.0, -20.0], [-50.0, -24.0]
+            ],
+            'sul': [
+                [-57.0, -34.0], [-48.0, -34.0], [-48.0, -24.0], [-57.0, -24.0], [-57.0, -34.0]
+            ]
+        };
+
         const query: any = {};
-        if (region) query.region = region;
         if (status) query.status = status;
+        if (region && REGIONS[region.toLowerCase()]) {
+            query.latitude = { $exists: true };
+            query.longitude = { $exists: true };
+        }
 
         const devices = await db.collection('lighting_devices').find(query).toArray();
-        return {
-            content: [{ type: 'text', text: JSON.stringify(devices, null, 2) }]
-        };
+
+        // Se for busca por região, filtra por polígono
+        let filtered = devices;
+        if (region && REGIONS[region.toLowerCase()]) {
+            const polygon = REGIONS[region.toLowerCase()];
+            filtered = devices.filter((d: any) => {
+                if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return false;
+                // Ponto dentro do polígono (algoritmo ray-casting)
+                let x = d.longitude, y = d.latitude;
+                let inside = false;
+                for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                    let xi = polygon[i][0], yi = polygon[i][1];
+                    let xj = polygon[j][0], yj = polygon[j][1];
+                    let intersect = ((yi > y) !== (yj > y)) &&
+                        (x < (xj - xi) * (y - yi) / (yj - yi + 0.0000001) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            });
+        }
+
+        if (geoJson) {
+            // Retorna como FeatureCollection
+            const features = filtered.map((d: any) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [d.longitude, d.latitude]
+                },
+                properties: { ...d, latitude: undefined, longitude: undefined }
+            }));
+            return {
+                content: [{
+                    type: 'text',
+                    mimeType: 'application/geo+json',
+                    text: JSON.stringify({
+                        type: 'FeatureCollection',
+                        features
+                    }, null, 2)
+                }]
+            };
+        } else {
+            return {
+                content: [{ type: 'text', text: JSON.stringify(filtered, null, 2) }]
+            };
+        }
     }
 );
 
