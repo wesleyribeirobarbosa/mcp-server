@@ -22,7 +22,7 @@ const logger = winston.createLogger({
     ),
     transports: [
         new DailyRotateFile({
-            filename: 'logs/server.log',
+            filename: path.join(__dirname, '../logs/server.log'),
             maxSize: '100k', // Aproximadamente 1000 linhas
             maxFiles: '10',
             zippedArchive: true
@@ -74,7 +74,7 @@ server.resource(
                                 type: 'object',
                                 properties: {
                                     region: { type: 'string', optional: true },
-                                    status: { type: 'string', optional: true }
+                                    geoJson: { type: 'boolean', optional: true }
                                 }
                             }
                         },
@@ -138,12 +138,13 @@ server.tool(
     'listLightingDevices',
     {
         region: z.string().optional(),
-        status: z.string().optional(),
-        geoJson: z.boolean().optional()
+        geoJson: z.boolean().optional(),
+        limit: z.number().optional(),
+        offset: z.number().optional()
     },
-    async ({ region, status, geoJson }) => {
-        // Polígonos aproximados das regiões do Brasil
-        const REGIONS: { [key: string]: number[][] } = {
+    async ({ region, geoJson, limit = 100, offset = 0 }) => {
+        logger.info(`listLightingDevices chamada com region=${region}, geoJson=${geoJson}, limit=${limit}, offset=${offset}`);
+        const REGIONS: Record<string, number[][]> = {
             'norte': [
                 [-73.99, -0.5], [-50.0, -0.5], [-50.0, 5.5], [-73.99, 5.5], [-73.99, -0.5]
             ],
@@ -160,23 +161,24 @@ server.tool(
                 [-57.0, -34.0], [-48.0, -34.0], [-48.0, -24.0], [-57.0, -24.0], [-57.0, -34.0]
             ]
         };
-
         const query: any = {};
-        if (status) query.status = status;
         if (region && REGIONS[region.toLowerCase()]) {
             query.latitude = { $exists: true };
             query.longitude = { $exists: true };
         }
-
-        const devices = await db.collection('lighting_devices').find(query).toArray();
-
-        // Se for busca por região, filtra por polígono
+        logger.info(`Query para MongoDB: ${JSON.stringify(query)}`);
+        const total = await db.collection('lighting_devices').countDocuments(query);
+        let devices = await db.collection('lighting_devices')
+            .find(query)
+            .skip(offset)
+            .limit(limit)
+            .toArray();
+        logger.info(`Dispositivos encontrados no banco (paginados): ${devices.length}`);
         let filtered = devices;
         if (region && REGIONS[region.toLowerCase()]) {
             const polygon = REGIONS[region.toLowerCase()];
             filtered = devices.filter((d: any) => {
                 if (typeof d.latitude !== 'number' || typeof d.longitude !== 'number') return false;
-                // Ponto dentro do polígono (algoritmo ray-casting)
                 let x = d.longitude, y = d.latitude;
                 let inside = false;
                 for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -188,10 +190,9 @@ server.tool(
                 }
                 return inside;
             });
+            logger.info(`Dispositivos após filtro de polígono: ${filtered.length}`);
         }
-
         if (geoJson) {
-            // Retorna como FeatureCollection
             const features = filtered.map((d: any) => ({
                 type: 'Feature',
                 geometry: {
@@ -200,19 +201,36 @@ server.tool(
                 },
                 properties: { ...d, latitude: undefined, longitude: undefined }
             }));
+            logger.info(`Retornando FeatureCollection com ${features.length} features`);
             return {
                 content: [{
                     type: 'text',
                     mimeType: 'application/geo+json',
                     text: JSON.stringify({
                         type: 'FeatureCollection',
-                        features
+                        features,
+                        pagination: {
+                            total,
+                            offset,
+                            limit,
+                            hasNext: offset + filtered.length < total
+                        }
                     }, null, 2)
                 }]
             };
         } else {
+            logger.info(`Retornando lista de dispositivos filtrados: ${filtered.length}`);
             return {
-                content: [{ type: 'text', text: JSON.stringify(filtered, null, 2) }]
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify({
+                        devices: filtered,
+                        total,
+                        offset,
+                        limit,
+                        hasNext: offset + filtered.length < total
+                    }, null, 2)
+                }]
             };
         }
     }
@@ -224,19 +242,39 @@ server.tool(
     {
         deviceId: z.string(),
         startTime: z.number(),
-        endTime: z.number()
+        endTime: z.number(),
+        limit: z.number().optional(),
+        offset: z.number().optional()
     },
-    async ({ deviceId, startTime, endTime }) => {
+    async ({ deviceId, startTime, endTime, limit = 100, offset = 0 }) => {
+        logger.info(`getLightingTelemetry chamada com deviceId=${deviceId}, startTime=${startTime}, endTime=${endTime}, limit=${limit}, offset=${offset}`);
+        const total = await db.collection('lighting_telemetry')
+            .countDocuments({
+                deviceId,
+                timestamp: { $gte: startTime, $lte: endTime }
+            });
         const telemetry = await db.collection('lighting_telemetry')
             .find({
                 deviceId,
                 timestamp: { $gte: startTime, $lte: endTime }
             })
             .sort({ timestamp: 1 })
+            .skip(offset)
+            .limit(limit)
             .toArray();
-
+        logger.info(`Registros de telemetria encontrados (paginados): ${telemetry.length}`);
+        logger.info(`Retornando telemetria paginada`);
         return {
-            content: [{ type: 'text', text: JSON.stringify(telemetry, null, 2) }]
+            content: [{
+                type: 'text',
+                text: JSON.stringify({
+                    telemetry,
+                    total,
+                    offset,
+                    limit,
+                    hasNext: offset + telemetry.length < total
+                }, null, 2)
+            }]
         };
     }
 );
@@ -250,6 +288,7 @@ server.tool(
         endTime: z.number()
     },
     async ({ deviceId, startTime, endTime }) => {
+        logger.info(`analyzeEnergyConsumption chamada com deviceId=${deviceId}, startTime=${startTime}, endTime=${endTime}`);
         const result = await db.collection('lighting_telemetry')
             .aggregate([
                 {
@@ -268,7 +307,8 @@ server.tool(
                     }
                 }
             ]).toArray();
-
+        logger.info(`Resultado da agregação: ${JSON.stringify(result[0])}`);
+        logger.info(`Retornando análise de consumo de energia`);
         return {
             content: [{ type: 'text', text: JSON.stringify(result[0], null, 2) }]
         };
@@ -280,18 +320,38 @@ server.tool(
     'detectWaterLeaks',
     {
         startTime: z.number(),
-        endTime: z.number()
+        endTime: z.number(),
+        limit: z.number().optional(),
+        offset: z.number().optional()
     },
-    async ({ startTime, endTime }) => {
+    async ({ startTime, endTime, limit = 100, offset = 0 }) => {
+        logger.info(`detectWaterLeaks chamada com startTime=${startTime}, endTime=${endTime}, limit=${limit}, offset=${offset}`);
+        const total = await db.collection('water_telemetry')
+            .countDocuments({
+                timestamp: { $gte: startTime, $lte: endTime },
+                leakDetected: true
+            });
         const leaks = await db.collection('water_telemetry')
             .find({
                 timestamp: { $gte: startTime, $lte: endTime },
                 leakDetected: true
             })
+            .skip(offset)
+            .limit(limit)
             .toArray();
-
+        logger.info(`Vazamentos encontrados (paginados): ${leaks.length}`);
+        logger.info(`Retornando lista de vazamentos paginada`);
         return {
-            content: [{ type: 'text', text: JSON.stringify(leaks, null, 2) }]
+            content: [{
+                type: 'text',
+                text: JSON.stringify({
+                    leaks,
+                    total,
+                    offset,
+                    limit,
+                    hasNext: offset + leaks.length < total
+                }, null, 2)
+            }]
         };
     }
 );
@@ -305,6 +365,7 @@ server.tool(
         endTime: z.number()
     },
     async ({ region, startTime, endTime }) => {
+        logger.info(`analyzeGasConsumption chamada com region=${region}, startTime=${startTime}, endTime=${endTime}`);
         const result = await db.collection('gas_telemetry')
             .aggregate([
                 {
@@ -336,7 +397,8 @@ server.tool(
                     }
                 }
             ]).toArray();
-
+        logger.info(`Resultado da agregação: ${JSON.stringify(result[0])}`);
+        logger.info(`Retornando análise de consumo de gás`);
         return {
             content: [{ type: 'text', text: JSON.stringify(result[0], null, 2) }]
         };

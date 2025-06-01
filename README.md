@@ -276,6 +276,56 @@ const vazamentos = await detectWaterLeaks({
 });
 ```
 
+# Paginação de Resultados nas Ferramentas MCP
+
+Algumas ferramentas deste servidor MCP podem retornar grandes volumes de dados. Para evitar timeouts e melhorar a performance, foi implementada paginação nas seguintes ferramentas:
+
+- `listLightingDevices`
+- `getLightingTelemetry`
+- `detectWaterLeaks`
+
+## Como utilizar a paginação
+
+Essas ferramentas aceitam os seguintes parâmetros opcionais:
+
+- `limit` (número): Quantidade máxima de registros a serem retornados por requisição. Valor padrão: 100.
+- `offset` (número): Quantidade de registros a serem pulados antes de começar a retornar os resultados. Valor padrão: 0.
+
+### Exemplo de chamada
+```json
+{
+  "limit": 100,
+  "offset": 200
+}
+```
+
+## Formato da resposta paginada
+A resposta dessas ferramentas será um objeto JSON contendo:
+
+- Os dados solicitados (ex: `devices`, `telemetry`, `leaks`)
+- `total`: total de registros disponíveis para a consulta
+- `offset`: offset utilizado na consulta
+- `limit`: limite utilizado na consulta
+- `hasNext`: booleano indicando se há mais páginas de dados
+
+### Exemplo de resposta
+```json
+{
+  "devices": [ ... ],
+  "total": 60819,
+  "offset": 200,
+  "limit": 100,
+  "hasNext": true
+}
+```
+
+> **Observação:**
+> Caso utilize o parâmetro `geoJson` em `listLightingDevices`, a resposta será um objeto GeoJSON com um campo adicional `pagination` contendo os metadados acima.
+
+## Recomendações
+- Para obter todos os dados, faça múltiplas requisições, incrementando o `offset` de acordo com o `limit` até que `hasNext` seja `false`.
+- Não utilize valores de `limit` muito altos para evitar sobrecarga no servidor.
+
 ### Dicas de Uso
 
 1. Use linguagem natural para descrever o que você precisa
@@ -318,3 +368,4 @@ Caso seja necessário utilizar outros MCP Clients (diferentes do Cursor) ou inte
 > **Importante:**
 > - O suporte a HTTP e autenticação não está habilitado por padrão neste projeto.
 > - A implementação de autenticação segura é fundamental para ambientes de produção.
+
