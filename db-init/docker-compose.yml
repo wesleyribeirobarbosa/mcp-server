@@ -4,7 +4,6 @@ services:
   mongodb:
     image: mongo:latest
     container_name: mongodb
-    restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: cursor-mcp-client
       MONGO_INITDB_ROOT_PASSWORD: cursor-mcp-password
