@@ -1,0 +1,23 @@
+{
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "mongo-uri",
+            "description": "MongoDB Connection URI",
+            "default": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/smart_city_iot?authSource=admin"
+        }
+    ],
+    "servers": {
+        "smart-city": {
+            "type": "stdio",
+            "command": "node",
+            "args": [
+                "ABSOLUTE_PATH_TO_SERVER/dist/server.js"
+            ],
+            "env": {
+                "MONGO_URI": "${input:mongo-uri}",
+                "READ_ONLY": "false"
+            }
+        }
+    }
+}

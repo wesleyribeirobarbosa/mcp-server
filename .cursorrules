@@ -1,0 +1,61 @@
+# Projeto: Servidor MCP para Smart Cities
+
+## Contexto do Projeto
+Este é um servidor MCP (Model Context Protocol) que permite interação com dados IoT de cidades inteligentes.
+
+## Estrutura Principal
+- `/src/server.ts` - Servidor MCP principal
+- `/src/tools/` - Ferramentas MCP disponíveis
+- `/db-init/` - Scripts de inicialização do banco MongoDB
+- `/dist/` - Arquivos TypeScript compilados
+- `/.cursor/mcp.json` - Configuração MCP para Cursor
+
+## Tecnologias Utilizadas
+- TypeScript
+- Node.js
+- MongoDB
+- MCP SDK (@modelcontextprotocol/sdk)
+- Zod para validação
+- Winston para logging
+
+## Banco de Dados
+- MongoDB local na porta 27017
+- Database: `smart_city_iot`
+- Usuário: `cursor-mcp-client`
+- Collections: lighting_devices, water_devices, gas_devices, *_telemetry
+
+## Ferramentas MCP Disponíveis
+
+### Ferramentas Básicas
+1. `listLightingDevices` - Lista dispositivos de iluminação
+2. `getLightingTelemetry` - Dados de telemetria
+3. `analyzeEnergyConsumption` - Análise de consumo de energia
+4. `detectWaterLeaks` - Detecção de vazamentos
+5. `analyzeGasConsumption` - Análise de consumo de gás
+
+### Ferramentas Avançadas
+6. `getRegionalStatistics` - Estatísticas regionais comparativas
+7. `getDeviceHealthReport` - Relatório de saúde dos dispositivos
+8. `getCityDashboard` - Dashboard completo da cidade
+9. `predictMaintenance` - Predição de manutenção
+10. `getAnomalyDetection` - Detecção de anomalias
+11. `getEnergyEfficiencyReport` - Relatório completo de eficiência energética
+12. `getWaterQualityReport` - Relatório de qualidade da água
+13. `getCrossDeviceAnalysis` - Análise correlacionada entre dispositivos
+
+## Comandos Importantes
+- `npm run build` - Compila TypeScript
+- `npm start` - Inicia servidor MCP
+- `cd db-init && docker-compose up -d` - Inicia MongoDB com dados
+
+## Convenções
+- Timestamps sempre em formato UNIX (segundos)
+- Logs salvos em arquivos (não console) devido ao protocolo MCP
+- Comunicação apenas via Stdio
+- IDs de dispositivos seguem padrão: LIGHT-000001, WATER-000001, etc.
+
+## Considerações de Desenvolvimento
+- Sempre validar entradas com Zod
+- Usar paginação para consultas grandes (limit/offset)
+- Tratar erros de conexão MongoDB
+- Logs para arquivo devido ao protocolo MCP Stdio 
