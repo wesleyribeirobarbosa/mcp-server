@@ -43,8 +43,7 @@ Este é um servidor MCP (Model Context Protocol) que atua como uma ponte entre I
 - "Identifique picos de energia na última semana"
 
 ### Análises Avançadas (Novas Ferramentas)
-- "Gere um dashboard completo da cidade para hoje, caso já exista um dashboard.html,
-apenas o atualize com os daodos obtidos. Caso não exista, crie um novo html."
+- "Gere um dashboard completo da cidade para hoje (modelo para dashboard em: /template/dashboard.html)"
 - "Quais dispositivos precisam de manutenção urgente?"
 - "Detecte anomalias na iluminação com alta sensibilidade"
 - "Compare estatísticas regionais dos últimos 7 dias"
