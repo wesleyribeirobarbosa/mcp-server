@@ -7,9 +7,9 @@ const MONGODB_URI = 'mongodb://cursor-mcp-client:cursor-mcp-password@localhost:2
 const DB_NAME = 'smart_city_iot';
 
 // Quantidade de dispositivos
-const LIGHTING_DEVICES = 10000;
-const WATER_DEVICES = 50000;
-const GAS_DEVICES = 50000;
+const LIGHTING_DEVICES = 500;
+const WATER_DEVICES = 500;
+const GAS_DEVICES = 500;
 
 // Configuração de tempo
 const THREE_MONTHS_IN_DAYS = 90;

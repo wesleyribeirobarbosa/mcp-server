@@ -2,19 +2,58 @@
 
 Este banco de dados simula dados de dispositivos IoT para uma cidade inteligente, incluindo iluminação pública, medidores de água e gás.
 
+## Integração com IDEs
+
+Este banco de dados é utilizado pelo servidor MCP Smart Cities que se integra com:
+- **VSCode com GitHub Copilot** (configuração automática via `.vscode/mcp.json`)
+- **Cursor** (configuração manual via `.cursor/mcp.json`)
+
+Para mais detalhes sobre configuração, consulte o `README.md` principal do projeto.
+
 ## Estrutura do Banco de Dados
 
 O banco de dados `smart_city_iot` contém as seguintes coleções:
 
 ### Dispositivos
-- `lighting_devices`: 10.000 dispositivos de iluminação pública
-- `water_devices`: 50.000 medidores de água
-- `gas_devices`: 50.000 medidores de gás
+- `lighting_devices`: 100 dispositivos de iluminação pública
+- `water_devices`: 500 medidores de água
+- `gas_devices`: 500 medidores de gás
 
 ### Telemetria
 - `lighting_telemetry`: Dados de telemetria dos postes de iluminação
 - `water_telemetry`: Dados de telemetria dos medidores de água
 - `gas_telemetry`: Dados de telemetria dos medidores de gás
+
+## Configuração de Acesso
+
+### Para VSCode/GitHub Copilot
+O arquivo `.vscode/mcp.json` na raiz do projeto configura automaticamente a conexão com este banco:
+```json
+{
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "mongo-uri",
+            "description": "MongoDB Connection URI",
+            "default": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/smart_city_iot?authSource=admin"
+        }
+    ]
+}
+```
+
+### Para Cursor
+O arquivo `.cursor/mcp.json` deve ser configurado com:
+```json
+{
+    "mcpServers": {
+        "smart-city": {
+            "env": {
+                "MONGO_URI": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/smart_city_iot?authSource=admin"
+            }
+        }
+    }
+}
+```
 
 ## Esquema dos Dados
 
@@ -138,8 +177,45 @@ O banco de dados possui os seguintes índices para otimização de consultas:
 - Inclui detecção de anomalias (vazamentos)
 - Dados de bateria, temperatura e pressão são monitorados
 
+## Inicialização
+
+### Usando Docker Compose (Recomendado)
+```bash
+cd db-init
+docker-compose up --build -d
+```
+
+### Usando Script Manual
+```bash
+node populate_mongodb.js
+```
+
+## Testando Conexão
+
+### Via VSCode/Copilot
+1. Abra o projeto no VSCode
+2. O `.vscode/mcp.json` configura automaticamente
+3. Use Agent Mode no Chat do Copilot
+4. Teste: "Quantos dispositivos temos no banco?"
+
+### Via Cursor
+1. Configure `.cursor/mcp.json`
+2. Teste: "Liste 5 dispositivos de iluminação"
+
+### Via MongoDB Shell
+```bash
+# Conectar ao banco
+docker exec -it db-init_mongo_1 mongosh -u cursor-mcp-client -p cursor-mcp-password smart_city_iot
+
+# Verificar collections
+db.lighting_devices.countDocuments()
+db.water_devices.countDocuments()
+db.gas_devices.countDocuments()
+```
+
 ## Exemplos de Consultas Úteis
 
+### MongoDB Direto
 ```javascript
 // Encontrar postes com consumo anormal de energia
 db.lighting_telemetry.find({
@@ -160,4 +236,27 @@ db.gas_telemetry.aggregate([
         }
     }
 ])
-``` 
+```
+
+### Via MCP Tools (VSCode/Cursor)
+```
+"Detecte vazamentos de água nas últimas 24 horas"
+"Analise consumo de energia do dispositivo LIGHT-000001"
+"Gere dashboard da cidade com alertas para hoje"
+```
+
+## Credenciais
+
+- **Usuário**: `cursor-mcp-client`
+- **Senha**: `cursor-mcp-password`
+- **Banco**: `smart_city_iot`
+- **Host**: `localhost:27017`
+- **Auth Source**: `admin`
+
+## Documentação Relacionada
+
+- **Setup Completo**: `../README.md`
+- **Início Rápido**: `../QUICKSTART.md`
+- **Desenvolvimento**: `../docs/DEVELOPMENT.md`
+- **Contexto IA**: `../docs/AI_CONTEXT.md`
+- **Instruções Copilot**: `../.github/copilot-instructions.md` 
