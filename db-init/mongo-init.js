@@ -17,13 +17,15 @@ db.gas_telemetry.createIndex({ deviceId: 1, timestamp: 1 });
 // Mudar para o banco admin para criar o usuário
 db = db.getSiblingDB('admin');
 
-// Criar usuário com permissões para todos os bancos
+// Criar usuário com permissões mais abrangentes
 db.createUser({
     user: 'cursor-mcp-client',
     pwd: 'cursor-mcp-password',
     roles: [
         { role: 'readWrite', db: 'smart_city_iot' },
         { role: 'dbAdmin', db: 'smart_city_iot' },
-        { role: 'userAdmin', db: 'smart_city_iot' }
+        { role: 'userAdmin', db: 'smart_city_iot' },
+        { role: 'clusterMonitor', db: 'admin' },
+        { role: 'readAnyDatabase', db: 'admin' }
     ]
 });

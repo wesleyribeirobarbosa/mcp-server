@@ -1547,18 +1547,25 @@ server.tool(
 server.tool(
     'getEnergyEfficiencyReport',
     {
-        startTime: z.number(),
-        endTime: z.number(),
+        startTime: z.number().optional(),
+        endTime: z.number().optional(),
         includeRecommendations: z.boolean().optional(),
         region: z.string().optional()
     },
     async ({ startTime, endTime, includeRecommendations = true, region }) => {
-        logger.info(`getEnergyEfficiencyReport chamada com startTime=${startTime}, endTime=${endTime}, region=${region}`);
+        // Valores padrão para períodos de tempo (últimos 30 dias se não especificado)
+        const now = Math.floor(Date.now() / 1000);
+        const defaultStartTime = now - (30 * 24 * 60 * 60); // 30 dias atrás
+        
+        const actualStartTime = startTime || defaultStartTime;
+        const actualEndTime = endTime || now;
+        
+        logger.info(`getEnergyEfficiencyReport chamada com startTime=${actualStartTime}, endTime=${actualEndTime}, region=${region}`);
 
         // Análise detalhada de eficiência energética
         const efficiencyAnalysis = await db.collection('lighting_telemetry')
             .aggregate([
-                { $match: { timestamp: { $gte: startTime, $lte: endTime } } },
+                { $match: { timestamp: { $gte: actualStartTime, $lte: actualEndTime } } },
                 {
                     $lookup: {
                         from: 'lighting_devices',
@@ -1639,7 +1646,7 @@ server.tool(
         // Análise por região
         const regionalAnalysis = await db.collection('lighting_telemetry')
             .aggregate([
-                { $match: { timestamp: { $gte: startTime, $lte: endTime } } },
+                { $match: { timestamp: { $gte: actualStartTime, $lte: actualEndTime } } },
                 {
                     $lookup: {
                         from: 'lighting_devices',
@@ -1683,11 +1690,11 @@ server.tool(
             avgEfficiencyScore: Math.round(efficiencyAnalysis.reduce((sum, device) => sum + device.efficiencyScore, 0) / efficiencyAnalysis.length * 100) / 100,
             bestPerformers: efficiencyAnalysis.slice(0, 10),
             worstPerformers: efficiencyAnalysis.slice(-10).reverse(),
-            periodDays: Math.ceil((endTime - startTime) / (24 * 60 * 60))
+            periodDays: Math.ceil((actualEndTime - actualStartTime) / (24 * 60 * 60))
         };
 
         const result: any = {
-            period: { startTime, endTime },
+            period: { startTime: actualStartTime, endTime: actualEndTime },
             summary,
             regionalAnalysis,
             deviceAnalysis: efficiencyAnalysis

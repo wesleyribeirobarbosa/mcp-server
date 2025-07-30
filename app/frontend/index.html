@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Cities IoT Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">🏙️ Smart Cities Dashboard</h1>
+            <div class="header-controls">
+                <button id="testConnection" class="test-btn" title="Testar conectividade">
+                    <span class="test-icon">📶</span>
+                    <span class="test-text">Status</span>
+                </button>
+                <div class="theme-toggle">
+                    <button id="themeToggle" class="theme-btn">🌙</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Prompt Section -->
+            <section class="prompt-section">
+                <div class="prompt-card">
+                    <h2>Consulte os dados IoT da cidade</h2>
+                    <form id="promptForm" class="prompt-form">
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                id="promptInput" 
+                                placeholder="Ex: Mostre o consumo de energia dos últimos 7 dias..."
+                                class="prompt-input"
+                                required
+                            >
+                            <button type="submit" class="submit-btn" id="submitBtn">
+                                <span class="btn-text">Consultar</span>
+                                <span class="btn-loading hidden">⏳ Processando...</span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <h3>Consultas rápidas:</h3>
+                        <div class="quick-buttons">
+                            <button class="quick-btn" data-prompt="Gere um dashboard da cidade para hoje">
+                                📊 Dashboard Hoje
+                            </button>
+                            <button class="quick-btn" data-prompt="Mostre o consumo de energia dos últimos 7 dias">
+                                ⚡ Energia 7 dias
+                            </button>
+                            <button class="quick-btn" data-prompt="Verifique vazamentos de água na região Sudeste">
+                                💧 Vazamentos
+                            </button>
+                            <button class="quick-btn" data-prompt="Analise a saúde dos dispositivos">
+                                🔧 Saúde Dispositivos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <!-- Metrics Cards -->
+                <div class="metrics-cards" id="metricsCards">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+
+                <!-- Charts Container -->
+                <div class="charts-container" id="chartsContainer">
+                    <!-- Charts will be populated dynamically -->
+                </div>
+
+                <!-- Raw Data Section -->
+                <div class="raw-data-section">
+                    <details class="raw-data-details">
+                        <summary>📋 Ver dados brutos</summary>
+                        <pre id="rawDataContent" class="raw-data-content"></pre>
+                    </details>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-card">
+                    <h3>❌ Erro</h3>
+                    <p id="errorMessage"></p>
+                    <button id="errorDismiss" class="error-dismiss">Fechar</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Smart Cities IoT Dashboard - Powered by MCP Server</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="charts.js"></script>
+    <script src="mcp-client.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
