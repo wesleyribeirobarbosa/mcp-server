@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Servidor MCP
+  mcp-server:
+    build: .
+    container_name: smart-city-mcp-server
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://cursor-mcp-client:cursor-mcp-password@mongo:27017/admin
+    volumes:
+      # Volume para logs persistentes
+      - ./logs:/app/logs
+      # Volume para documentos
+      - ./docs:/app/docs
+      # Volume para configurações MCP
+      - ./.cursor:/app/.cursor:ro
+    depends_on:
+      - mongo
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    # Configuração para comunicação via stdio
+    stdin_open: true
+    tty: true
+
+  # MongoDB
+  mongo:
+    image: mongo:6.0
+    container_name: smart-city-mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=cursor-mcp-client
+      - MONGO_INITDB_ROOT_PASSWORD=cursor-mcp-password
+      - MONGO_INITDB_DATABASE=smart_city_iot
+    volumes:
+      - mongo_data:/data/db
+      - ./db-init/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local 

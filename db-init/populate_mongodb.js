@@ -3,7 +3,7 @@ const ProgressBar = require('progress');
 require('dotenv').config();
 
 // Configurações
-const MONGODB_URI = 'mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/admin';
+const MONGODB_URI = process.env.MONGO_URI || 'mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/admin';
 const DB_NAME = 'smart_city_iot';
 
 // Quantidade de dispositivos

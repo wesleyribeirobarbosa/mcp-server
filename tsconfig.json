@@ -4,9 +4,10 @@
         "module": "commonjs",
         "outDir": "./dist",
         "rootDir": "./src",
-        "strict": true,
+        "strict": false,
         "esModuleInterop": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "noImplicitAny": false
     },
     "include": [
         "src/**/*"

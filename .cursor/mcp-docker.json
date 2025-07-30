@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "smart-city-iot-docker": {
+      "command": "docker",
+      "args": ["exec", "-i", "smart-city-mcp-server", "node", "dist/server.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "MONGO_URI": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/admin"
+      }
+    },
+    "smart-city-iot-dev": {
+      "command": "docker",
+      "args": ["exec", "-i", "smart-city-mcp-server-dev", "npm", "run", "dev:docker"],
+      "env": {
+        "NODE_ENV": "development",
+        "MONGO_URI": "mongodb://cursor-mcp-client:cursor-mcp-password@localhost:27017/admin"
+      }
+    }
+  }
+} 
