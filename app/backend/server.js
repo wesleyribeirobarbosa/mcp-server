@@ -533,6 +533,304 @@ app.post('/api/prompt', async (req, res) => {
     }
 });
 
+// Rota para relatórios específicos de dispositivos
+app.post('/api/device-report', async (req, res) => {
+    try {
+        const { deviceType, deviceId, reportType } = req.body;
+        
+        // Validação de entrada
+        if (!deviceType || !deviceId || !reportType) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Tipo de dispositivo, ID e tipo de relatório são obrigatórios' 
+            });
+        }
+
+        // Validar tipos permitidos
+        const validDeviceTypes = ['lighting', 'water', 'gas'];
+        const validReportTypes = ['full', 'health', 'telemetry', 'maintenance'];
+        
+        if (!validDeviceTypes.includes(deviceType)) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Tipo de dispositivo inválido' 
+            });
+        }
+
+        if (!validReportTypes.includes(reportType)) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Tipo de relatório inválido' 
+            });
+        }
+
+        log(`Gerando relatório: ${reportType} para dispositivo ${deviceId} (${deviceType})`);
+
+        // Gerar relatório baseado no tipo
+        const report = await generateDeviceReport(deviceType, deviceId, reportType);
+
+        res.json({
+            success: true,
+            deviceType,
+            deviceId,
+            reportType,
+            report,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        log(`Erro ao gerar relatório: ${error.message}`);
+        
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Erro interno do servidor',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Função para gerar relatórios de dispositivos
+async function generateDeviceReport(deviceType, deviceId, reportType) {
+    const now = Math.floor(Date.now() / 1000);
+    const oneDayAgo = now - (24 * 60 * 60);
+    const oneWeekAgo = now - (7 * 24 * 60 * 60);
+
+    let report = '';
+    
+    try {
+        // Cabeçalho do relatório
+        report += `📱 RELATÓRIO DE DISPOSITIVO IoT\n`;
+        report += `${'='.repeat(50)}\n\n`;
+        report += `🆔 ID do Dispositivo: ${deviceId}\n`;
+        report += `🏷️  Tipo: ${getDeviceTypeLabel(deviceType)}\n`;
+        report += `📊 Tipo de Relatório: ${getReportTypeLabel(reportType)}\n`;
+        report += `📅 Data de Geração: ${new Date().toLocaleString('pt-BR')}\n\n`;
+
+        switch (reportType) {
+            case 'full':
+                report += await generateFullReport(deviceType, deviceId, oneDayAgo, now);
+                break;
+            case 'health':
+                report += await generateHealthReport(deviceId);
+                break;
+            case 'telemetry':
+                report += await generateTelemetryReport(deviceType, deviceId, oneDayAgo, now);
+                break;
+            case 'maintenance':
+                report += await generateMaintenanceReport(deviceId);
+                break;
+        }
+
+        // Rodapé
+        report += `\n${'='.repeat(50)}\n`;
+        report += `📄 Relatório gerado pelo Smart Cities IoT Dashboard\n`;
+        report += `🔗 Sistema MCP Server v1.0.0\n`;
+
+    } catch (error) {
+        report += `❌ Erro ao gerar seção do relatório: ${error.message}\n`;
+    }
+
+    return report;
+}
+
+// Funções auxiliares para gerar diferentes tipos de relatórios
+async function generateFullReport(deviceType, deviceId, startTime, endTime) {
+    let report = `🔍 RELATÓRIO COMPLETO\n`;
+    report += `${'-'.repeat(30)}\n\n`;
+
+    try {
+        // 1. Informações básicas do dispositivo
+        const deviceInfo = await getDeviceInfo(deviceType, deviceId);
+        report += `📋 INFORMAÇÕES BÁSICAS:\n`;
+        report += deviceInfo;
+        report += `\n`;
+
+        // 2. Status de saúde
+        const healthData = await mcpBridge.executeTool('getDeviceHealthReport', { deviceId });
+        report += `🏥 STATUS DE SAÚDE:\n`;
+        report += formatHealthData(healthData);
+        report += `\n`;
+
+        // 3. Telemetria recente
+        if (deviceType === 'lighting') {
+            const telemetryData = await mcpBridge.executeTool('getLightingTelemetry', {
+                deviceId,
+                startTime,
+                endTime
+            });
+            report += `📊 TELEMETRIA RECENTE (24h):\n`;
+            report += formatTelemetryData(telemetryData);
+        }
+
+        // 4. Análise de manutenção
+        const maintenanceData = await mcpBridge.executeTool('predictMaintenance', { deviceId });
+        report += `🔧 ANÁLISE DE MANUTENÇÃO:\n`;
+        report += formatMaintenanceData(maintenanceData);
+
+    } catch (error) {
+        report += `❌ Erro ao coletar dados completos: ${error.message}\n`;
+    }
+
+    return report;
+}
+
+async function generateHealthReport(deviceId) {
+    let report = `🏥 RELATÓRIO DE SAÚDE\n`;
+    report += `${'-'.repeat(30)}\n\n`;
+
+    try {
+        const healthData = await mcpBridge.executeTool('getDeviceHealthReport', { deviceId });
+        report += formatHealthData(healthData);
+    } catch (error) {
+        report += `❌ Erro ao obter dados de saúde: ${error.message}\n`;
+    }
+
+    return report;
+}
+
+async function generateTelemetryReport(deviceType, deviceId, startTime, endTime) {
+    let report = `📊 RELATÓRIO DE TELEMETRIA\n`;
+    report += `${'-'.repeat(30)}\n\n`;
+
+    try {
+        if (deviceType === 'lighting') {
+            const telemetryData = await mcpBridge.executeTool('getLightingTelemetry', {
+                deviceId,
+                startTime,
+                endTime
+            });
+            report += formatTelemetryData(telemetryData);
+        } else {
+            report += `ℹ️ Telemetria não disponível para dispositivos do tipo: ${deviceType}\n`;
+        }
+    } catch (error) {
+        report += `❌ Erro ao obter telemetria: ${error.message}\n`;
+    }
+
+    return report;
+}
+
+async function generateMaintenanceReport(deviceId) {
+    let report = `🔧 RELATÓRIO DE MANUTENÇÃO\n`;
+    report += `${'-'.repeat(30)}\n\n`;
+
+    try {
+        const maintenanceData = await mcpBridge.executeTool('predictMaintenance', { deviceId });
+        report += formatMaintenanceData(maintenanceData);
+    } catch (error) {
+        report += `❌ Erro ao obter dados de manutenção: ${error.message}\n`;
+    }
+
+    return report;
+}
+
+// Funções de formatação
+function getDeviceTypeLabel(deviceType) {
+    const labels = {
+        'lighting': '🔆 Iluminação Pública',
+        'water': '💧 Sistema de Água',
+        'gas': '🔥 Sistema de Gás'
+    };
+    return labels[deviceType] || deviceType;
+}
+
+function getReportTypeLabel(reportType) {
+    const labels = {
+        'full': '🔍 Completo',
+        'health': '🏥 Saúde do Dispositivo',
+        'telemetry': '📊 Telemetria',
+        'maintenance': '🔧 Manutenção'
+    };
+    return labels[reportType] || reportType;
+}
+
+async function getDeviceInfo(deviceType, deviceId) {
+    try {
+        const devices = await mcpBridge.executeTool('listLightingDevices', {});
+        const deviceData = JSON.parse(devices.content[0].text);
+        
+        const device = deviceData.devices?.find(d => d.deviceId === deviceId);
+        if (device) {
+            let info = `   • Status: ${device.status === 'active' ? '🟢 Ativo' : '🔴 Inativo'}\n`;
+            info += `   • Localização: ${device.location || 'Não informada'}\n`;
+            info += `   • Região: ${device.region || 'Não informada'}\n`;
+            info += `   • Último Update: ${device.lastSeen ? new Date(device.lastSeen * 1000).toLocaleString('pt-BR') : 'N/A'}\n`;
+            return info;
+        }
+    } catch (error) {
+        // Silently handle error
+    }
+    
+    return `   • Status: ❓ Informações não disponíveis\n   • Dispositivo: ${deviceId}\n`;
+}
+
+function formatHealthData(healthData) {
+    try {
+        const data = JSON.parse(healthData.content[0].text);
+        let report = '';
+        
+        if (data.overallHealth) {
+            const status = data.overallHealth > 80 ? '🟢 Excelente' : 
+                          data.overallHealth > 60 ? '🟡 Bom' : 
+                          data.overallHealth > 40 ? '🟠 Atenção' : '🔴 Crítico';
+            report += `   • Status Geral: ${status} (${data.overallHealth}%)\n`;
+        }
+        
+        if (data.devices && data.devices.length > 0) {
+            const device = data.devices[0];
+            report += `   • Uptime: ${device.uptime || 'N/A'}\n`;
+            report += `   • Última Comunicação: ${device.lastCommunication ? new Date(device.lastCommunication * 1000).toLocaleString('pt-BR') : 'N/A'}\n`;
+            report += `   • Alertas Ativos: ${device.alerts || 0}\n`;
+        }
+        
+        return report || '   • Dados de saúde não disponíveis\n';
+    } catch (error) {
+        return `   • Erro ao processar dados de saúde: ${error.message}\n`;
+    }
+}
+
+function formatTelemetryData(telemetryData) {
+    try {
+        const data = JSON.parse(telemetryData.content[0].text);
+        let report = '';
+        
+        if (data.summary) {
+            report += `   • Total de Leituras: ${data.summary.totalReadings || 0}\n`;
+            report += `   • Período: ${data.summary.period || 'N/A'}\n`;
+        }
+        
+        if (data.telemetry && data.telemetry.length > 0) {
+            report += `   • Últimas 5 leituras:\n`;
+            data.telemetry.slice(0, 5).forEach((reading, index) => {
+                const time = new Date(reading.timestamp * 1000).toLocaleString('pt-BR');
+                report += `     ${index + 1}. ${time} - Consumo: ${reading.powerConsumption}W\n`;
+            });
+        }
+        
+        return report || '   • Dados de telemetria não disponíveis\n';
+    } catch (error) {
+        return `   • Erro ao processar telemetria: ${error.message}\n`;
+    }
+}
+
+function formatMaintenanceData(maintenanceData) {
+    try {
+        const data = JSON.parse(maintenanceData.content[0].text);
+        let report = '';
+        
+        if (data.predictions && data.predictions.length > 0) {
+            const prediction = data.predictions[0];
+            report += `   • Próxima Manutenção: ${prediction.nextMaintenance ? new Date(prediction.nextMaintenance * 1000).toLocaleDateString('pt-BR') : 'N/A'}\n`;
+            report += `   • Prioridade: ${prediction.priority || 'N/A'}\n`;
+            report += `   • Estimativa de Falha: ${prediction.failureProbability ? (prediction.failureProbability * 100).toFixed(1) + '%' : 'N/A'}\n`;
+        }
+        
+        return report || '   • Dados de manutenção não disponíveis\n';
+    } catch (error) {
+        return `   • Erro ao processar dados de manutenção: ${error.message}\n`;
+    }
+}
+
 // Rota para listar ferramentas MCP disponíveis
 app.get('/api/tools', async (req, res) => {
     try {

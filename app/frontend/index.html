@@ -68,6 +68,46 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Device Report Section -->
+                    <div class="device-report-section">
+                        <h3>📱 Relatório Específico de Dispositivo</h3>
+                        <p class="device-report-description">
+                            Obtenha um relatório detalhado em texto de um dispositivo específico
+                        </p>
+                        <form id="deviceReportForm" class="device-report-form">
+                            <div class="device-input-group">
+                                <div class="device-input-row">
+                                    <select id="deviceTypeSelect" class="device-type-select" required>
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="lighting">🔆 Iluminação</option>
+                                        <option value="water">💧 Água</option>
+                                        <option value="gas">🔥 Gás</option>
+                                    </select>
+                                    <input 
+                                        type="text" 
+                                        id="deviceIdInput" 
+                                        placeholder="ID do dispositivo (ex: LIGHT-000001)"
+                                        class="device-id-input"
+                                        required
+                                    >
+                                </div>
+                                <div class="device-input-row">
+                                    <select id="reportTypeSelect" class="report-type-select" required>
+                                        <option value="">Tipo de relatório</option>
+                                        <option value="full">🔍 Relatório Completo</option>
+                                        <option value="health">🏥 Saúde do Dispositivo</option>
+                                        <option value="telemetry">📊 Telemetria Recente</option>
+                                        <option value="maintenance">🔧 Status Manutenção</option>
+                                    </select>
+                                    <button type="submit" class="device-report-btn" id="deviceReportBtn">
+                                        <span class="btn-text">📄 Gerar Relatório</span>
+                                        <span class="btn-loading hidden">⏳ Gerando...</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </section>
 
@@ -81,6 +121,29 @@
                 <!-- Charts Container -->
                 <div class="charts-container" id="chartsContainer">
                     <!-- Charts will be populated dynamically -->
+                </div>
+
+                <!-- Device Report Display -->
+                <div class="device-report-display" id="deviceReportDisplay" style="display: none;">
+                    <div class="device-report-card">
+                        <div class="device-report-header">
+                            <h3 id="deviceReportTitle">📱 Relatório do Dispositivo</h3>
+                            <div class="device-report-controls">
+                                <button id="copyReportBtn" class="copy-report-btn" title="Copiar relatório">
+                                    📋 Copiar
+                                </button>
+                                <button id="downloadReportBtn" class="download-report-btn" title="Baixar como TXT">
+                                    💾 Download
+                                </button>
+                                <button id="closeReportBtn" class="close-report-btn" title="Fechar relatório">
+                                    ✖️
+                                </button>
+                            </div>
+                        </div>
+                        <div class="device-report-content">
+                            <pre id="deviceReportText" class="device-report-text"></pre>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Raw Data Section -->

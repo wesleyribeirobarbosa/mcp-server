@@ -93,6 +93,38 @@ class SmartCitiesApp {
                 }
             }
         });
+
+        // Device Report Form
+        const deviceReportForm = document.getElementById('deviceReportForm');
+        if (deviceReportForm) {
+            deviceReportForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.processDeviceReport();
+            });
+        }
+
+        // Device Report Controls
+        const copyReportBtn = document.getElementById('copyReportBtn');
+        const downloadReportBtn = document.getElementById('downloadReportBtn');
+        const closeReportBtn = document.getElementById('closeReportBtn');
+
+        if (copyReportBtn) {
+            copyReportBtn.addEventListener('click', () => {
+                this.copyReportToClipboard();
+            });
+        }
+
+        if (downloadReportBtn) {
+            downloadReportBtn.addEventListener('click', () => {
+                this.downloadReport();
+            });
+        }
+
+        if (closeReportBtn) {
+            closeReportBtn.addEventListener('click', () => {
+                this.closeDeviceReport();
+            });
+        }
     }
 
     /**
@@ -1085,25 +1117,320 @@ class SmartCitiesApp {
     }
 
     /**
-     * Limpa todos os resultados
+     * Limpa todos os resultados da interface
      */
     clearResults() {
-        // Limpa métricas
-        const metricsContainer = document.getElementById('metricsCards');
-        if (metricsContainer) {
-            metricsContainer.innerHTML = '';
+        // Limpar cards de métricas
+        const metricsCards = document.getElementById('metricsCards');
+        if (metricsCards) {
+            metricsCards.innerHTML = '';
         }
 
-        // Limpa gráficos
-        if (window.chartManager) {
-            window.chartManager.clearCharts();
+        // Limpar gráficos
+        const chartsContainer = document.getElementById('chartsContainer');
+        if (chartsContainer) {
+            chartsContainer.innerHTML = '';
         }
 
-        // Limpa dados brutos
+        // Limpar dados brutos
         const rawDataContent = document.getElementById('rawDataContent');
         if (rawDataContent) {
             rawDataContent.textContent = '';
         }
+
+        // Esconder seções
+        this.hideResults();
+        this.hideError();
+        this.hideDeviceReport();
+    }
+
+    /**
+     * Processa relatório de dispositivo específico
+     */
+    async processDeviceReport() {
+        if (this.isLoading) return;
+
+        const deviceType = document.getElementById('deviceTypeSelect').value;
+        const deviceId = document.getElementById('deviceIdInput').value.trim();
+        const reportType = document.getElementById('reportTypeSelect').value;
+
+        // Validação
+        if (!deviceType || !deviceId || !reportType) {
+            this.showError('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        // Validar formato do device ID
+        if (!this.validateDeviceId(deviceType, deviceId)) {
+            return;
+        }
+
+        console.log('📱 Processando relatório de dispositivo:', { deviceType, deviceId, reportType });
+
+        // Mostrar loading
+        this.setDeviceReportLoading(true);
+        this.hideError();
+        this.hideResults();
+
+        try {
+            // Fazer requisição para o backend
+            const response = await fetch(`${window.mcpClient.baseURL}/device-report`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    deviceType,
+                    deviceId,
+                    reportType
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro ao gerar relatório');
+            }
+
+            console.log('📄 Relatório gerado:', data);
+
+            // Exibir relatório
+            this.displayDeviceReport(data);
+
+        } catch (error) {
+            console.error('❌ Erro ao processar relatório:', error);
+            this.handleDeviceReportError(error);
+        } finally {
+            this.setDeviceReportLoading(false);
+        }
+    }
+
+    /**
+     * Valida o formato do device ID
+     */
+    validateDeviceId(deviceType, deviceId) {
+        const patterns = {
+            'lighting': /^LIGHT-\d{6}$/,
+            'water': /^WATER-\d{6}$/,
+            'gas': /^GAS-\d{6}$/
+        };
+
+        const pattern = patterns[deviceType];
+        if (pattern && !pattern.test(deviceId.toUpperCase())) {
+            const examples = {
+                'lighting': 'LIGHT-000001',
+                'water': 'WATER-000001', 
+                'gas': 'GAS-000001'
+            };
+            
+            this.showError(`Formato inválido do ID. Use o formato: ${examples[deviceType]}`);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Define estado de loading do botão de relatório
+     */
+    setDeviceReportLoading(isLoading) {
+        const button = document.getElementById('deviceReportBtn');
+        const btnText = button?.querySelector('.btn-text');
+        const btnLoading = button?.querySelector('.btn-loading');
+
+        if (button && btnText && btnLoading) {
+            this.isLoading = isLoading;
+            button.disabled = isLoading;
+
+            if (isLoading) {
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline';
+                btnLoading.classList.remove('hidden');
+            } else {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                btnLoading.classList.add('hidden');
+            }
+        }
+    }
+
+    /**
+     * Exibe o relatório de dispositivo
+     */
+    displayDeviceReport(reportData) {
+        const reportDisplay = document.getElementById('deviceReportDisplay');
+        const reportTitle = document.getElementById('deviceReportTitle');
+        const reportText = document.getElementById('deviceReportText');
+
+        if (!reportDisplay || !reportTitle || !reportText) {
+            console.error('Elementos de exibição de relatório não encontrados');
+            return;
+        }
+
+        // Configurar título
+        const deviceTypeLabel = this.getDeviceTypeLabel(reportData.deviceType);
+        const reportTypeLabel = this.getReportTypeLabel(reportData.reportType);
+        reportTitle.textContent = `📱 ${reportTypeLabel} - ${reportData.deviceId}`;
+
+        // Configurar conteúdo
+        reportText.textContent = reportData.report;
+
+        // Armazenar dados para ações posteriores
+        this.currentReport = reportData;
+
+        // Mostrar a seção de resultados (necessário porque o deviceReportDisplay está dentro dela)
+        this.showResults();
+
+        // Mostrar relatório
+        reportDisplay.style.display = 'block';
+
+        // Scroll suave para o relatório
+        reportDisplay.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+
+        console.log('📄 Relatório exibido com sucesso');
+    }
+
+    /**
+     * Trata erros de relatório de dispositivo
+     */
+    handleDeviceReportError(error) {
+        let message = 'Erro ao gerar relatório do dispositivo';
+
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            message = '🔌 Não foi possível conectar ao servidor. Verifique se o backend está rodando.';
+        } else if (error.message.includes('timeout')) {
+            message = '⏱️ Timeout na geração do relatório. Tente novamente.';
+        } else if (error.message.includes('não encontrado')) {
+            message = '🔍 Dispositivo não encontrado. Verifique o ID informado.';
+        } else if (error.message) {
+            message = '❌ ' + error.message;
+        }
+
+        this.showError(message);
+    }
+
+    /**
+     * Copia o relatório para a área de transferência
+     */
+    async copyReportToClipboard() {
+        if (!this.currentReport) {
+            this.showError('Nenhum relatório disponível para copiar');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(this.currentReport.report);
+            
+            // Feedback visual
+            const copyBtn = document.getElementById('copyReportBtn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copiado!';
+            copyBtn.style.background = '#10b981';
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = '';
+            }, 2000);
+
+            console.log('📋 Relatório copiado para área de transferência');
+
+        } catch (error) {
+            console.error('Erro ao copiar:', error);
+            this.showError('Erro ao copiar relatório para área de transferência');
+        }
+    }
+
+    /**
+     * Baixa o relatório como arquivo TXT
+     */
+    downloadReport() {
+        if (!this.currentReport) {
+            this.showError('Nenhum relatório disponível para download');
+            return;
+        }
+
+        try {
+            const filename = `relatorio_${this.currentReport.deviceId}_${this.currentReport.reportType}_${new Date().toISOString().split('T')[0]}.txt`;
+            
+            const blob = new Blob([this.currentReport.report], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Feedback visual
+            const downloadBtn = document.getElementById('downloadReportBtn');
+            const originalText = downloadBtn.textContent;
+            downloadBtn.textContent = '✅ Baixado!';
+            downloadBtn.style.background = '#10b981';
+            
+            setTimeout(() => {
+                downloadBtn.textContent = originalText;
+                downloadBtn.style.background = '';
+            }, 2000);
+
+            console.log('💾 Relatório baixado:', filename);
+
+        } catch (error) {
+            console.error('Erro ao baixar:', error);
+            this.showError('Erro ao baixar relatório');
+        }
+    }
+
+    /**
+     * Fecha o relatório de dispositivo
+     */
+    closeDeviceReport() {
+        const reportDisplay = document.getElementById('deviceReportDisplay');
+        if (reportDisplay) {
+            reportDisplay.style.display = 'none';
+        }
+        
+        this.currentReport = null;
+        console.log('📱 Relatório de dispositivo fechado');
+    }
+
+    /**
+     * Esconde o relatório de dispositivo
+     */
+    hideDeviceReport() {
+        const reportDisplay = document.getElementById('deviceReportDisplay');
+        if (reportDisplay) {
+            reportDisplay.style.display = 'none';
+        }
+    }
+
+    /**
+     * Obter label do tipo de dispositivo
+     */
+    getDeviceTypeLabel(deviceType) {
+        const labels = {
+            'lighting': '🔆 Iluminação',
+            'water': '💧 Água',
+            'gas': '🔥 Gás'
+        };
+        return labels[deviceType] || deviceType;
+    }
+
+    /**
+     * Obter label do tipo de relatório
+     */
+    getReportTypeLabel(reportType) {
+        const labels = {
+            'full': '🔍 Relatório Completo',
+            'health': '🏥 Saúde do Dispositivo',
+            'telemetry': '📊 Telemetria',
+            'maintenance': '🔧 Manutenção'
+        };
+        return labels[reportType] || reportType;
     }
 
     /**
