@@ -1,0 +1,31 @@
+{
+  "name": "mcp-smart-cities-web-app",
+  "version": "1.0.0",
+  "description": "Aplicação web para consumo do servidor MCP Smart Cities",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "frontend": "npx http-server frontend -p 3000 -c-1",
+    "dev:full": "concurrently \"npm run dev\" \"npm run frontend\""
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "concurrently": "^8.2.2",
+    "http-server": "^14.1.1"
+  },
+  "keywords": [
+    "mcp",
+    "smart-cities",
+    "iot",
+    "dashboard"
+  ],
+  "author": "Smart Cities Team",
+  "license": "MIT"
+}
